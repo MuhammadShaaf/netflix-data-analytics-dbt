@@ -180,7 +180,7 @@ dbt docs serve    # view interactive documentation
 
 ---
 
-## 🙋 About
+## About Me
 
 Built by **[Muhammad Shaaf](https://github.com/MuhammadShaaf)** as part of an Analytics Engineering portfolio.
 
