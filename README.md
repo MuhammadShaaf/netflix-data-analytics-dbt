@@ -1,66 +1,193 @@
-# 🎬 Netflix Data Analytics — dbt + Snowflake
+# 🎬 Netflix Data Analytics Pipeline — dbt + Snowflake + AWS S3
 
-An end-to-end analytics engineering project that transforms raw Netflix data into clean, tested, analytics-ready models using **dbt** and **Snowflake**.
+End-to-end **Analytics Engineering** project that ingests raw MovieLens (Netflix-style) data from **AWS S3** into **Snowflake**, then transforms it into clean, tested, analytics-ready models using **dbt**.
 
-Originally built by following a dbt tutorial course, then extended with [list your own additions here — e.g. "an additional revenue-by-genre mart model and custom data tests"].
+This project demonstrates a modern ELT architecture commonly used in data engineering / analytics engineering roles.
+
+---
 
 ## 🏗️ Architecture
 
-Raw Netflix data (Snowflake RAW schema)
+```
+AWS S3 (Raw CSV files)
         │
         ▼
-   Staging models (cleaned, renamed, typed)
+Snowflake External Stage + RAW tables
         │
         ▼
-  Intermediate models (business logic)
+dbt Staging Models (cleaned & typed)
         │
         ▼
-   Mart models (analytics-ready, tested)
+dbt Dimension + Fact Models
+        │
+        ▼
+dbt Mart Models (analytics-ready)
+```
+
+---
 
 ## 🛠️ Tech Stack
 
-- **Warehouse:** Snowflake (databases, schemas, warehouses, roles)
-- **Transformation:** dbt (data build tool)
-- **Language:** SQL, Jinja
-- **Version control:** Git / GitHub
+| Layer              | Technology                  |
+|--------------------|-----------------------------|
+| Cloud Storage      | AWS S3                      |
+| Data Warehouse     | Snowflake                   |
+| Transformation     | dbt (dbt-snowflake)         |
+| Language           | SQL + Jinja                 |
+| Version Control    | Git / GitHub                |
+
+---
 
 ## 📁 Project Structure
 
-netflix/
-├── models/
-│   ├── staging/       # Cleaned, standardized source data
-│   ├── intermediate/  # Business logic transformations
-│   └── marts/         # Final analytics-ready tables
-├── tests/             # Custom data tests
-├── macros/            # Reusable Jinja macros
-├── seeds/             # Static reference data
-└── dbt_project.yml
+```
+netflix-data-analytics-dbt/
+├── netflix/                          # dbt project root
+│   ├── models/
+│   │   ├── staging/                  # Cleaned source views
+│   │   │   ├── source_movies.sql
+│   │   │   ├── source_ratings.sql
+│   │   │   ├── source_tags.sql
+│   │   │   ├── source_genome_scores.sql
+│   │   │   ├── source_genome_tags.sql
+│   │   │   └── source_links.sql
+│   │   ├── dim/                      # Dimension tables
+│   │   │   ├── dim_movies.sql
+│   │   │   ├── dim_users.sql
+│   │   │   ├── dim_genome_tags.sql
+│   │   │   └── dim_movies_with_tags.sql
+│   │   ├── fact/                     # Fact tables
+│   │   │   ├── fct_ratings.sql
+│   │   │   └── fct_genome_scores.sql
+│   │   ├── mart/                     # Analytics marts
+│   │   │   └── mart_movie_releases.sql
+│   │   ├── sources.yml               # Source definitions
+│   │   └── schema.yml                # Tests & documentation
+│   ├── macros/
+│   ├── seeds/
+│   ├── snapshots/
+│   ├── tests/
+│   ├── dbt_project.yml
+│   └── packages.yml
+├── commands.sql                      # Setup commands
+├── instructions.sql                  # Snowflake + S3 setup script
+└── README.md
+```
 
-## ✅ Data Quality
+---
 
-This project uses dbt tests to enforce data quality, including:
-- `not_null` and `unique` tests on primary keys
-- `relationships` tests between fact and dimension models
-- [Add any custom singular tests you wrote]
+## 🔄 Pipeline Overview
 
-## 📊 Sample Insight
+1. **Ingestion**
+   - Raw CSV files (`movies.csv`, `ratings.csv`, `tags.csv`, `genome-scores.csv`, `genome-tags.csv`, `links.csv`) stored in an **AWS S3 bucket**.
+   - Snowflake **external stage** created pointing to the S3 bucket.
+   - Data loaded into Snowflake `RAW` schema tables using `COPY INTO`.
 
-[One or two sentences on something the data showed — e.g. "Content added to Netflix peaked in 2019, with a notable shift toward TV shows over films after 2020."]
+2. **Transformation (dbt)**
+   - **Staging layer**: Clean column names, cast data types, and standardize raw tables.
+   - **Dimension layer**: Build reusable dimension tables (`dim_movies`, `dim_users`, `dim_genome_tags`, etc.).
+   - **Fact layer**: Build fact tables (`fct_ratings`, `fct_genome_scores`).
+   - **Mart layer**: Create business-facing analytics models (e.g. `mart_movie_releases`).
 
-## 📄 Documentation
+3. **Data Quality**
+   - `not_null` and `unique` tests on primary keys
+   - Relationship tests between fact and dimension tables
+   - Schema documentation via `schema.yml`
 
-Full dbt-generated documentation (model lineage, column descriptions, test coverage) is published here:
-👉 **[Live dbt docs](your-github-pages-link-here)**
+---
 
-## 🚀 Running This Project
+## 🚀 How to Run This Project
 
-1. Clone the repo and `cd netflix`
-2. Install dependencies: `pip install dbt-snowflake`
-3. Configure your Snowflake connection in `profiles.yml` (not committed — use environment variables for credentials)
-4. Run `dbt deps` to install packages
-5. Run `dbt build` to run models and tests
-6. Run `dbt docs generate && dbt docs serve` to view documentation locally
+### Prerequisites
+- Snowflake account
+- AWS S3 bucket with the MovieLens CSV files
+- Python + virtual environment
+- dbt-snowflake
 
-## 🙋 About This Project
+### 1. Snowflake Setup
+Run the SQL in `instructions.sql` to:
+- Create role, user, warehouse, database & schema
+- Create external stage linked to your S3 bucket
+- Load all raw tables
 
-Built by [Muhammad Shaaf](https://github.com/MuhammadShaaf) as part of learning analytics engineering. Part of a broader portfolio including a [SQL Server data warehouse project](https://github.com/MuhammadShaaf/SQL-Data-Warehouse-Project).
+### 2. Local Setup
+```bash
+# Create & activate virtual environment
+python -m venv venv
+# Windows
+venv\Scripts\activate
+# macOS / Linux
+source venv/bin/activate
+
+# Install dbt
+pip install dbt-snowflake==1.9.0
+
+# Create profiles directory (if not exists)
+mkdir ~/.dbt          # macOS/Linux
+# or
+mkdir %userprofile%\.dbt   # Windows
+```
+
+### 3. Configure `~/.dbt/profiles.yml`
+```yaml
+netflix:
+  target: dev
+  outputs:
+    dev:
+      type: snowflake
+      account: <your-account>
+      user: dbt
+      password: <your-password>
+      role: TRANSFORM
+      database: MOVIELENS
+      warehouse: COMPUTE_WH
+      schema: RAW
+      threads: 4
+```
+
+### 4. Run the dbt Project
+```bash
+cd netflix
+dbt deps          # install packages
+dbt run           # build all models
+dbt test          # run data tests
+dbt docs generate
+dbt docs serve    # view interactive documentation
+```
+
+---
+
+## 📊 Models Summary
+
+| Layer     | Models                                      | Materialization |
+|-----------|---------------------------------------------|-----------------|
+| Staging   | source_movies, source_ratings, source_tags, source_genome_*, source_links | View |
+| Dimension | dim_movies, dim_users, dim_genome_tags, dim_movies_with_tags | Table |
+| Fact      | fct_ratings, fct_genome_scores              | Table |
+| Mart      | mart_movie_releases                         | Table |
+
+---
+
+## ✅ Key Skills Demonstrated
+
+- Modern ELT architecture (S3 → Snowflake → dbt)
+- Snowflake external stages & `COPY INTO`
+- dbt best practices (staging → intermediate → marts)
+- Dimension & Fact modeling
+- Data quality testing with dbt
+- Source freshness & documentation
+- Infrastructure-as-code mindset for analytics
+
+---
+
+## 🙋 About
+
+Built by **[Muhammad Shaaf](https://github.com/MuhammadShaaf)** as part of an Analytics Engineering portfolio.
+
+Related project: [SQL Server Data Warehouse Project](https://github.com/MuhammadShaaf/SQL-Data-Warehouse-Project)
+
+---
+
+## 📄 License
+
+MIT License
